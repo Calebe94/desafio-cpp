@@ -17,6 +17,57 @@ void usage(const char *name)
     exit(1);
 }
 
+void handle_client(tcp::socket& socket, const std::string& prefix, std::size_t max_file_size)
+{
+    try
+    {
+        std::cout << "Client connected!" << std::endl;
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::system_clock::to_time_t(now);
+        std::string filename = prefix + "_" + std::to_string(timestamp) + ".txt";
+        std::ofstream file(filename, std::ios::binary);
+
+        if (!file.is_open())
+        {
+            std::cerr << "Error opening the file " << filename << std::endl;
+            return;
+        }
+
+        char buffer[1024];
+        std::size_t bytes_received;
+
+        while (true)
+        {
+            boost::system::error_code error;
+            bytes_received = socket.read_some(boost::asio::buffer(buffer), error);
+
+            if (error == boost::asio::error::eof)
+            {
+                std::cout << "Client disconnected." << std::endl;
+                break;
+            }
+            else if (error)
+            {
+                throw boost::system::system_error(error);
+            }
+
+            if (((size_t)file.tellp() + (size_t)bytes_received) > max_file_size)
+            {
+                std::cerr << "Maximum file size reached. Closing file." << std::endl;
+                file.close();
+                break;
+            }
+
+            file.write(buffer, bytes_received);
+        }
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Error " << e.what() << std::endl;
+    }
+}
+
 int main(int argc, char* argv[])
 {
     int status_code = 0;
@@ -47,7 +98,7 @@ int main(int argc, char* argv[])
         {
             tcp::socket socket(io);
             acceptor.accept(socket);
-            std::cout << "Connection!" << std::endl;
+            std::thread(handle_client, std::ref(socket), prefix, max_file_size).detach();
         }
     }
     catch (std::exception& e)
