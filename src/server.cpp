@@ -1,10 +1,15 @@
 #include <iostream>
 #include <string>
+#include <fstream>
+#include <boost/asio.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #define DEFAULT_PORT          12345
 #define DEFAULT_PREFIX        "data"
 #define DEFAULT_MAX_FILE_SIZE 1024
+
+using boost::asio::ip::tcp;
 
 void usage(const char *name)
 {
@@ -32,6 +37,18 @@ int main(int argc, char* argv[])
         std::cout << "Porta: " << port << std::endl;
         std::cout << "Prefix: " << prefix << std::endl;
         std::cout << "tamanho máximo: " << max_file_size << std::endl;
+
+        boost::asio::io_service io;
+        tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), port));
+
+        std::cout << "Server started. Listening on port " << port << "..." << std::endl;
+
+        while(true)
+        {
+            tcp::socket socket(io);
+            acceptor.accept(socket);
+            std::cout << "Connection!" << std::endl;
+        }
     }
     catch (std::exception& e)
     {
