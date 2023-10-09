@@ -13,6 +13,13 @@ Certifique-se de ter os seguintes requisitos antes de executar o projeto:
 
 ## Compilação e Execução
 
+O projeto foi desenvolvido e testado em um ambiente com Debian "Testing" (`Trixie`) com as seguintes versões dos pacotes:
+
+* `build-essential` - **12.10** [Debian/trixie main]
+* `libboost-all-dev` - **1.74.0.3** [Debian/trixie main]
+* `c++` - **13.2.0-4**
+* `make` - **4.3**
+
 ### Servidor
 
 1. **Compilação**:
@@ -22,7 +29,7 @@ Certifique-se de ter os seguintes requisitos antes de executar o projeto:
    Usando g++:
 
    ```shell
-   g++ -o servidor servidor.cpp -lboost_system -lboost_thread
+   g++ -o server src/server.cpp -lboost_system -lboost_thread
    ```
 
    Usando Make:
@@ -36,7 +43,7 @@ Certifique-se de ter os seguintes requisitos antes de executar o projeto:
    Para iniciar o servidor, execute o binário compilado:
 
    ```shell
-   ./server
+   ./bin/server /path/to/config.json
    ```
 
    O servidor começará a ouvir na porta especificada no arquivo de configuração.
@@ -50,7 +57,7 @@ Certifique-se de ter os seguintes requisitos antes de executar o projeto:
    Usando g++:
 
    ```shell
-   g++ -o cliente cliente.cpp -lboost_system
+   g++ -o client src/client.cpp -lboost_system
    ```
 
    Usando CMake:
@@ -64,7 +71,7 @@ Certifique-se de ter os seguintes requisitos antes de executar o projeto:
    Para iniciar o cliente, execute o binário compilado:
 
    ```shell
-   ./client
+   ./bin/client <host> <port> [debug]
    ```
 
    O cliente se conectará ao servidor na porta especificada no arquivo de configuração e enviará dados para ele.
@@ -73,18 +80,23 @@ Certifique-se de ter os seguintes requisitos antes de executar o projeto:
 
 1. **Arquivo de Configuração**:
 
-   O servidor lê suas configurações de um arquivo chamado `config.txt`. Certifique-se de configurar a porta e o tamanho máximo dos arquivos neste arquivo antes de iniciar o servidor.
+   O servidor lê suas configurações de um arquivo chamado `config.json`. Certifique-se de configurar a porta e o tamanho máximo dos arquivos neste arquivo antes de iniciar o servidor.
 
-   Exemplo de `config.txt`:
+* Exemplo de `config.json`:
 
-   ```
-   Port=12345
-   MaxFileSize=1024
-   ```
+```json
+{
+    "port": 8080,
+    "prefix": "data",
+    "max_file_size": 1024,
+    "client_timeout": 10
+}
+
+```
 
 2. **Nome do Arquivo**:
 
-   O nome dos arquivos gerados pelo servidor é configurável. Eles são nomeados com base em um prefixo definido no arquivo `config.txt`, ao qual é anexada uma marca de tempo no momento da abertura do arquivo.
+   O nome dos arquivos gerados pelo servidor é configurável. Eles são nomeados com base em um prefixo definido no arquivo `config.json`, ao qual é anexada uma marca de tempo no momento da abertura do arquivo.
 
 ## Funcionalidades Implementadas
 

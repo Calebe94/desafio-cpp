@@ -1,5 +1,6 @@
 {
     "port": 8080,
     "prefix": "data",
-    "max_file_size": 1024
+    "max_file_size": 1024,
+    "client_timeout": 10
 }
