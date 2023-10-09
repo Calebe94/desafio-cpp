@@ -7,10 +7,10 @@
 #include <boost/filesystem.hpp>
 #include <chrono>
 
-#define DEFAULT_PORT          12345
-#define DEFAULT_PREFIX        "data"
-#define DEFAULT_MAX_FILE_SIZE 1024
-#define CLIENT_TIMEOUT        10
+#define DEFAULT_PORT           8080
+#define DEFAULT_PREFIX         "data"
+#define DEFAULT_MAX_FILE_SIZE  1024
+#define DEFAULT_CLIENT_TIMEOUT 10
 
 using boost::asio::ip::tcp;
 
@@ -18,6 +18,7 @@ struct Config {
     int port;
     std::string prefix;
     std::size_t max_file_size;
+    int client_timeout;
 };
 
 void usage(const char *name)
@@ -35,6 +36,7 @@ Config readConfig(const std::string& configFilePath) {
     config.port = pt.get("port", DEFAULT_PORT);
     config.prefix = pt.get("prefix", DEFAULT_PREFIX);
     config.max_file_size = pt.get("max_file_size", DEFAULT_MAX_FILE_SIZE);
+    config.client_timeout = pt.get("client_timeout", DEFAULT_MAX_FILE_SIZE);
 
     return config;
 }
@@ -51,7 +53,7 @@ std::string createFileWithIncrement(const std::string& prefix, int& file_index, 
     return filename;
 }
 
-void handleData(tcp::socket& socket, const std::string& prefix, std::size_t max_file_size, boost::asio::io_service& io)
+void handleData(tcp::socket& socket, const std::string& prefix, std::size_t max_file_size, int client_timeout, boost::asio::io_service& io)
 {
     std::size_t current_file_size = 0;
     int file_index = 0;
@@ -60,7 +62,7 @@ void handleData(tcp::socket& socket, const std::string& prefix, std::size_t max_
     auto timestamp = std::chrono::system_clock::to_time_t(now);
     filename = createFileWithIncrement(prefix, file_index, timestamp);
 
-    boost::asio::deadline_timer timer(io, boost::posix_time::seconds(CLIENT_TIMEOUT));
+    boost::asio::deadline_timer timer(io, boost::posix_time::seconds(client_timeout));
     bool timer_expired = false;
 
     std::function<void(const boost::system::error_code&)> onTimerExpired = [&](const boost::system::error_code& error)
@@ -75,7 +77,7 @@ void handleData(tcp::socket& socket, const std::string& prefix, std::size_t max_
 
     while (true)
     {
-        timer.expires_from_now(boost::posix_time::seconds(CLIENT_TIMEOUT));
+        timer.expires_from_now(boost::posix_time::seconds(client_timeout));
         timer.async_wait(onTimerExpired);
 
         char data[1024];
@@ -117,13 +119,13 @@ void handleData(tcp::socket& socket, const std::string& prefix, std::size_t max_
     }
 }
 
-void handleClient(tcp::socket& socket, const std::string& prefix, std::size_t max_file_size, boost::asio::io_service& io)
+void handleClient(tcp::socket& socket, const std::string& prefix, std::size_t max_file_size, int client_timeout, boost::asio::io_service& io)
 {
     try
     {
         std::cout << "Client connected!" << std::endl;
 
-        handleData(socket, prefix, max_file_size, io);
+        handleData(socket, prefix, max_file_size, client_timeout, io);
     }
     catch (std::exception& e)
     {
@@ -141,7 +143,7 @@ void startServer(const Config& config) {
     {
         tcp::socket socket(io);
         acceptor.accept(socket);
-        handleClient(socket, config.prefix, config.max_file_size, io);
+        handleClient(socket, config.prefix, config.max_file_size, config.client_timeout, io);
     }
 }
 
