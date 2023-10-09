@@ -14,10 +14,29 @@
 
 using boost::asio::ip::tcp;
 
+struct Config {
+    int port;
+    std::string prefix;
+    std::size_t max_file_size;
+};
+
 void usage(const char *name)
 {
     std::cout << "usage: " << name << " <config_file_path>" << std::endl;
     exit(1);
+}
+
+Config readConfig(const std::string& configFilePath) {
+    Config config;
+
+    boost::property_tree::ptree pt;
+    boost::property_tree::read_json(configFilePath, pt);
+
+    config.port = pt.get("port", DEFAULT_PORT);
+    config.prefix = pt.get("prefix", DEFAULT_PREFIX);
+    config.max_file_size = pt.get("max_file_size", DEFAULT_MAX_FILE_SIZE);
+
+    return config;
 }
 
 std::string createFileWithIncrement(const std::string& prefix, int& file_index, const std::time_t& timestamp)
@@ -98,7 +117,7 @@ void handleData(tcp::socket& socket, const std::string& prefix, std::size_t max_
     }
 }
 
-void handle_client(tcp::socket& socket, const std::string& prefix, std::size_t max_file_size, boost::asio::io_service& io)
+void handleClient(tcp::socket& socket, const std::string& prefix, std::size_t max_file_size, boost::asio::io_service& io)
 {
     try
     {
@@ -112,42 +131,42 @@ void handle_client(tcp::socket& socket, const std::string& prefix, std::size_t m
     }
 }
 
+void startServer(const Config& config) {
+    boost::asio::io_service io;
+    tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), config.port));
+
+    std::cout << "Server started. Listening on port " << config.port << "..." << std::endl;
+
+    while (true)
+    {
+        tcp::socket socket(io);
+        acceptor.accept(socket);
+        handleClient(socket, config.prefix, config.max_file_size, io);
+    }
+}
+
 int main(int argc, char* argv[])
 {
     int status_code = 0;
     try
     {
-        boost::property_tree::ptree config;
         if (argc < 2)
         {
             usage(argv[0]);
         }
 
-        boost::property_tree::read_json(argv[1], config);
+        Config config = readConfig(argv[1]);
 
-        int port = config.get<int>("port", DEFAULT_PORT);
-        std::string prefix = config.get<std::string>("prefix", DEFAULT_PREFIX);
-        std::size_t max_file_size = config.get<std::size_t>("max_file_size", DEFAULT_MAX_FILE_SIZE);
-        std::cout << "Configurações:" << std::endl;
-        std::cout << "Porta: " << port << std::endl;
-        std::cout << "Prefix: " << prefix << std::endl;
-        std::cout << "Tamanho máximo: " << max_file_size << " bytes" << std::endl;
+        std::cout << "Settings:" << std::endl;
+        std::cout << "Port: " << config.port << std::endl;
+        std::cout << "Prefix: " << config.prefix << std::endl;
+        std::cout << "Max size: " << config.max_file_size << " bytes" << std::endl;
 
-        boost::asio::io_service io;
-        tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), port));
-
-        std::cout << "Server started. Listening on port " << port << "..." << std::endl;
-
-        while(true)
-        {
-            tcp::socket socket(io);
-            acceptor.accept(socket);
-            handle_client(socket, prefix, max_file_size, io);
-        }
+        startServer(config);
     }
     catch (std::exception& e)
     {
-        std::cerr << "Erro: " << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << std::endl;
         status_code = 1;
     }
     return status_code;
